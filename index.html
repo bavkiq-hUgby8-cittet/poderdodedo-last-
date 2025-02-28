@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>O Poder do Dedo - Jogo de Cartas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Meta tags para melhor SEO e compartilhamento -->
+  <meta name="description" content="O Poder do Dedo - Um jogo social para festas e reuniões com amigos!" />
+  <meta property="og:title" content="O Poder do Dedo - Jogo de Cartas" />
+  <meta property="og:description" content="Jogue o Poder do Dedo com seus amigos!" />
+  
+  <!-- Favicon (adicione os arquivos ao seu projeto) -->
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-storage-compat.js"></script>
+
+  <!-- QRCode lib -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  
+  <!-- Google Fonts - Uso de fontes modernas -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome para ícones -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Link para o arquivo CSS externo -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <!-- Overlay de carregamento global -->
+  <div id="loadingScreen" class="hidden">
+    <div class="spinner-container">
+      <div class="spinner"></div>
+      <p>Conectando ao jogo...</p>
+    </div>
+  </div>
+
+  <div id="mainContainer">
+    <!-- Cabeçalho com o modo do usuário -->
+    <header id="gameHeader">
+      <div class="logo">
+        <i class="fas fa-hand-point-up logo-icon"></i>
+        <h1>O Poder do Dedo</h1>
+      </div>
+      <div id="userModeIndicator" class="hidden">
+        <span id="userRoleText"></span>
+        <span id="userName"></span>
+      </div>
+    </header>
+    
+    <div id="contentScroll">
+      <!-- Regras do Jogo (inicialmente ocultas) -->
+      <div id="rulesInfo" class="hidden section">
+        <div class="section-header">
+          <h2><i class="fas fa-book"></i> Regras do Jogo</h2>
+        </div>
+        <div class="rules-content">
+          <div class="rules-intro">
+            <p>O Poder do Dedo é um jogo social onde cada carta tem um efeito específico. Tire uma carta e siga as instruções!</p>
+          </div>
+          <h3>Efeitos das Cartas:</h3>
+          <div class="rules-grid">
+            <div class="rule-card">
+              <div class="rule-card-header">A (Ás)</div>
+              <div class="rule-card-body">O jogador escolhe alguém para beber uma dose.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">2</div>
+              <div class="rule-card-body">O jogador distribui duas doses para outras pessoas.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">3</div>
+              <div class="rule-card-body">O jogador distribui três doses para três pessoas diferentes.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">4</div>
+              <div class="rule-card-body">"Marca de..." O jogador escolhe uma categoria, e os jogadores devem falar uma marca dessa categoria até que alguém erre e tenha que beber.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">5</div>
+              <div class="rule-card-body">"Eu nunca..." O jogador fala uma afirmação sobre algo que nunca fez. Quem já fez, bebe uma dose.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">6</div>
+              <div class="rule-card-body">O jogador quebra todas as regras existentes.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">7</div>
+              <div class="rule-card-body">O jogador quebra uma regra existente.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">8</div>
+              <div class="rule-card-body">O jogador recebe o "Poder do Dedo" (pode ser ativado a qualquer momento).</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">9</div>
+              <div class="rule-card-body">Inverte o sentido do jogo (horário/anti-horário).</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">10</div>
+              <div class="rule-card-body">A vez passa para o jogador depois do próximo (pula um jogador).</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">J (Valete)</div>
+              <div class="rule-card-body">O jogador que puxou a carta bebe uma dose.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">Q (Dama)</div>
+              <div class="rule-card-body">Todas as mulheres bebem uma dose.</div>
+            </div>
+            <div class="rule-card">
+              <div class="rule-card-header">K (Rei)</div>
+              <div class="rule-card-body">Todos os homens bebem uma dose.</div>
+            </div>
+            <div class="rule-card special">
+              <div class="rule-card-header">Coringa</div>
+              <div class="rule-card-body">O jogador ganha um coringa que pode ser usado para evitar beber.</div>
+            </div>
+          </div>
+        </div>
+        <button id="btnCloseRules" class="btn btn-primary">
+          <i class="fas fa-xmark"></i> Fechar Regras
+        </button>
+      </div>
+
+      <!-- Modo Seletor -->
+      <div id="modeSelect" class="section welcome-section">
+        <div class="welcome-header">
+          <h2>Bem-vindo ao Poder do Dedo!</h2>
+          <p class="welcome-text">Um jogo divertido para jogar com amigos</p>
+        </div>
+        
+        <div class="role-selection">
+          <p class="selection-prompt">Escolha seu papel no jogo:</p>
+          <div class="role-buttons">
+            <button id="btnHost" class="btn btn-role btn-host">
+              <div class="btn-role-icon"><i class="fas fa-crown"></i></div>
+              <div class="btn-role-content">
+                <span>Organizador</span>
+                <small>Crie e gerencie uma partida</small>
+              </div>
+            </button>
+            <button id="btnPlayer" class="btn btn-role btn-player">
+              <div class="btn-role-icon"><i class="fas fa-user"></i></div>
+              <div class="btn-role-content">
+                <span>Jogador</span>
+                <small>Entre em uma partida existente</small>
+              </div>
+            </button>
+          </div>
+          <button id="btnViewRules" class="btn btn-info btn-view-rules">
+            <i class="fas fa-book"></i> Ver Regras do Jogo
+          </button>
+        </div>
+      </div>
+
+      <!-- HOST AREA -->
+      <div id="hostArea" class="hidden organizer-mode">
+        <div id="hostStep1" class="section">
+          <div class="section-header">
+            <h2><i class="fas fa-crown"></i> Modo Organizador</h2>
+            <p class="section-subheader">Crie ou entre em uma partida para começar</p>
+          </div>
+          <div class="create-game-section">
+            <button id="btnCreateGame" class="btn btn-success btn-lg">
+              <i class="fas fa-plus-circle"></i> Criar Nova Partida
+            </button>
+          </div>
+          <div class="join-section">
+            <div class="divider">
+              <span>OU</span>
+            </div>
+            <p class="join-prompt">Entre numa partida existente:</p>
+            <div class="input-group">
+              <input type="text" id="inputGameCodeHost" placeholder="Digite o código da partida..." />
+              <button id="btnJoinGameHost" class="btn btn-info">
+                <i class="fas fa-sign-in-alt"></i> Entrar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="hostLobby" class="hidden section">
+          <div class="section-header">
+            <h2><i class="fas fa-users"></i> Lobby da Partida</h2>
+            <div class="game-code-display">
+              <span class="label">Código:</span>
+              <span id="hostGameCode" class="code"></span>
+              <button id="btnCopyCode" class="btn btn-small btn-outline" aria-label="Copiar código">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+          </div>
+          <div class="qr-section">
+            <div id="qrCodeLobby" class="qr-code-container"></div>
+            <p id="hostLinkInfo" class="link-info"></p>
+            <p class="qr-instructions">Compartilhe o código ou QR code com os jogadores</p>
+          </div>
+          <div class="lobby-players-section">
+            <h3><i class="fas fa-user-group"></i> Jogadores Conectados</h3>
+            <div id="hostPlayersList" class="players-list"></div>
+            <div class="waiting-message">
+              <p>Aguardando jogadores para iniciar...</p>
+            </div>
+          </div>
+          <button id="btnStartGame" class="btn btn-primary btn-lg btn-start" disabled>
+            <i class="fas fa-play"></i> Iniciar Partida
+          </button>
+        </div>
+
+        <div id="hostGame" class="hidden game-container">
+          <!-- Cabeçalho do jogo -->
+          <div class="game-status-header">
+            <div id="hostStatusPanel" class="status-panel">
+              <i class="fas fa-user-circle status-icon"></i>
+              <span class="status-text">Aguardando...</span>
+            </div>
+            <div class="center-controls">
+              <button id="btnEndFingerPower" class="btn btn-warning" style="display:none;">
+                <i class="fas fa-hand-point-up"></i> Finalizar Poder do Dedo
+              </button>
+            </div>
+            <div class="qr-box">
+              <div id="qrCodeGame" class="qr-small"></div>
+              <span class="qr-label">Escanear para participar</span>
+            </div>
+          </div>
+          
+          <div class="game-layout">
+            <div class="game-left-column">
+              <div class="game-section">
+                <h3><i class="fas fa-layer-group"></i> Baralho</h3>
+                <div id="deckCount" class="deck-count"></div>
+                <div id="deckView" class="deck-view"></div>
+              </div>
+              
+              <div class="game-section">
+                <h3><i class="fas fa-list-check"></i> Regras Ativas</h3>
+                <div id="hostRules" class="rules-box"></div>
+              </div>
+              
+              <div class="game-section">
+                <h3><i class="fas fa-users"></i> Jogadores</h3>
+                <div id="hostPlayersStatus" class="players-status"></div>
+              </div>
+            </div>
+            
+            <div class="game-center-column">
+              <!-- Painel de instrução da carta atual -->
+              <div id="cardInstructionPanel" class="card-instruction hidden">
+                <div id="cardInstructionIcon" class="instruction-icon">
+                  <i class="fas fa-info-circle"></i>
+                </div>
+                <div id="cardInstructionText" class="instruction-text">
+                  Aguardando jogada...
+                </div>
+              </div>
+              
+              <div class="center-card-section">
+                <h3><i class="fas fa-cards"></i> Carta Atual</h3>
+                <div id="currentCardHost" class="current-card">Nenhuma</div>
+                <button id="btnDrawCard" class="btn btn-warning btn-card-action">
+                  <i class="fas fa-hand-back-fist"></i> Puxar Carta
+                </button>
+              </div>
+              
+              <div class="narrative-panel">
+                <h3><i class="fas fa-book-open"></i> Narrativa do Jogo</h3>
+                <div id="hostPainel" class="panel-box central-panel"></div>
+              </div>
+            </div>
+            
+            <div class="game-right-column">
+              <div class="game-section">
+                <h3><i class="fas fa-comments"></i> Chat</h3>
+                <div id="hostChat" class="panel-box chat-panel"></div>
+                <div class="chat-input-group">
+                  <input type="text" id="hostChatInput" placeholder="Digite uma mensagem..." />
+                  <button id="btnHostSendChat" class="btn btn-info">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <button id="btnEndGame" class="btn btn-danger btn-lg">
+                <i class="fas fa-stop-circle"></i> Encerrar Partida
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLAYER AREA -->
+      <div id="playerArea" class="hidden player-mode">
+        <div id="playerStep1" class="section">
+          <div class="section-header">
+            <h2><i class="fas fa-user"></i> Modo Jogador</h2>
+            <p class="section-subheader">Entre em uma partida para começar</p>
+          </div>
+          <div class="join-game-section">
+            <div class="input-group">
+              <input type="text" id="inputGameCodePlayer" placeholder="Digite o código da partida..." />
+              <button id="btnEnterCodePlayer" class="btn btn-info">
+                <i class="fas fa-sign-in-alt"></i> Entrar
+              </button>
+            </div>
+            <p class="qr-prompt">ou escaneie o QR Code fornecido pelo organizador</p>
+          </div>
+        </div>
+
+        <div id="playerRegister" class="hidden section">
+          <div class="section-header">
+            <h2><i class="fas fa-user-plus"></i> Registrar no Jogo</h2>
+          </div>
+          <div class="registration-form">
+            <label for="inputPlayerName">Como você quer ser chamado?</label>
+            <input type="text" id="inputPlayerName" placeholder="Seu nome ou apelido..." />
+            <button id="btnJoinPlayerGame" class="btn btn-success btn-lg">
+              <i class="fas fa-play"></i> Entrar na Partida
+            </button>
+          </div>
+        </div>
+
+        <div id="playerLobby" class="hidden section">
+          <div class="section-header">
+            <h2><i class="fas fa-hourglass"></i> Aguardando Início</h2>
+          </div>
+          <div class="waiting-animation">
+            <div class="spinner"></div>
+            <p>Aguardando o organizador iniciar a partida...</p>
+          </div>
+          <div class="lobby-players-section">
+            <h3><i class="fas fa-user-group"></i> Jogadores Conectados</h3>
+            <div id="playerLobbyList" class="players-list"></div>
+          </div>
+        </div>
+
+        <div id="playerGame" class="hidden game-container">
+          <div class="game-layout">
+            <div class="game-center-column priority-column">
+              <!-- Painel combinado de status + carta atual -->
+              <div class="combined-panel">
+                <div id="playerStatusPanel" class="status-panel">
+                  <i class="fas fa-user-circle status-icon"></i>
+                  <span class="status-text">Aguardando...</span>
+                </div>
+                
+                <!-- Painel de instrução da carta atual -->
+                <div id="playerCardInstruction" class="card-instruction hidden">
+                  <div id="playerCardInstructionIcon" class="instruction-icon">
+                    <i class="fas fa-info-circle"></i>
+                  </div>
+                  <div id="playerCardInstructionText" class="instruction-text">
+                    Aguardando jogada...
+                  </div>
+                </div>
+                
+                <div class="center-card-section">
+                  <h3><i class="fas fa-cards"></i> Carta Atual</h3>
+                  <div id="currentCardPlayer" class="current-card">Nenhuma</div>
+                  <button id="btnDrawCardPlayer" class="btn btn-warning btn-card-action" style="display:none;">
+                    <i class="fas fa-hand-back-fist"></i> Puxar Carta
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Painel de narrativa (com ordem invertida) -->
+              <div class="narrative-panel">
+                <h3><i class="fas fa-book-open"></i> Narrativa do Jogo</h3>
+                <div id="playerPainel" class="panel-box central-panel reverse-order"></div>
+              </div>
+            </div>
+            
+            <div class="game-side-column">
+              <!-- Ações do jogador -->
+              <div class="player-actions">
+                <button id="btnUseJoker" class="btn btn-info" style="display:none;">
+                  <i class="fas fa-star"></i> Usar Coringa
+                </button>
+                <button id="btnActivateFinger" class="btn btn-warning" style="display:none;">
+                  <i class="fas fa-hand-point-up"></i> Poder do Dedo
+                </button>
+              </div>
+              
+              <!-- Finger box movido para esta coluna -->
+              <div class="finger-box hidden" id="fingerBox">
+                <div class="finger-header">
+                  <i class="fas fa-exclamation-circle"></i>
+                  <h3>Poder do Dedo Ativo!</h3>
+                </div>
+                <p class="finger-instruction">Seja rápido para não perder!</p>
+                <button id="btnFingerClick" class="btn btn-danger btn-lg pulse-animation">
+                  <i class="fas fa-hand-point-up"></i> CLIQUE AGORA!
+                </button>
+                <div id="fingerQueue" class="finger-queue"></div>
+              </div>
+              
+              <!-- Painel de jogadores -->
+              <div class="game-section">
+                <h3><i class="fas fa-users"></i> Jogadores</h3>
+                <div id="playerListStatus" class="players-status"></div>
+              </div>
+              
+              <!-- Painel de regras -->
+              <div class="game-section">
+                <h3><i class="fas fa-list-check"></i> Regras Ativas</h3>
+                <div id="playerRules" class="rules-box"></div>
+              </div>
+              
+              <!-- Painel do baralho (menor e movido para baixo) -->
+              <div class="game-section deck-section-small">
+                <h3><i class="fas fa-layer-group"></i> Baralho</h3>
+                <div id="deckCountPlayer" class="deck-count"></div>
+                <div id="deckViewPlayer" class="deck-view-small"></div>
+              </div>
+              
+              <!-- Painel de chat movido para esta coluna -->
+              <div class="game-section">
+                <h3><i class="fas fa-comments"></i> Chat</h3>
+                <div id="playerChat" class="panel-box chat-panel"></div>
+                <div class="chat-input-group">
+                  <input type="text" id="playerChatInput" placeholder="Digite uma mensagem..." />
+                  <button id="btnPlayerSendChat" class="btn btn-info">
+                    <i class="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- contentScroll -->
+    
+    <!-- Rodapé com créditos -->
+    <footer id="gameFooter">
+      <p>&copy; 2025 O Poder do Dedo - Todos os direitos reservados</p>
+    </footer>
+  </div><!-- mainContainer -->
+
+  <!-- Botão flutuante para regras -->
+  <button id="btnShowRules" class="btn btn-info floating-button" aria-label="Ver Regras">
+    <i class="fas fa-book"></i>
+  </button>
+
+  <!-- Toasts para notificações -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Link para o arquivo JavaScript externo -->
+  <script src="script.js"></script>
+</body>
+</html>
