@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>O Poder do Dedo - Responsivo 16:9</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-storage-compat.js"></script>
+
+  <!-- QRCode lib -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Link para o arquivo CSS externo -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div id="mainContainer">
+    <div id="contentScroll">
+      <h1>O Poder do Dedo</h1>
+
+      <!-- Modo Seletor -->
+      <div id="modeSelect" class="section">
+        <div class="title">Você é o Organizador ou Jogador?</div>
+        <button id="btnHost" class="btn-dark">Organizador</button>
+        <button id="btnPlayer" class="btn-primary">Jogador</button>
+      </div>
+
+      <!-- HOST AREA -->
+      <div id="hostArea" class="hidden">
+        <div id="hostStep1" class="section">
+          <div class="title">Criar ou Entrar numa Partida</div>
+          <button id="btnCreateGame" class="btn-success">Criar Nova Partida</button>
+          <p style="margin-top:10px;text-align:center;">Ou entre numa partida existente:</p>
+          <input type="text" id="inputGameCodeHost" placeholder="Código..." />
+          <button id="btnJoinGameHost" class="btn-info">Entrar</button>
+        </div>
+
+        <div id="hostLobby" class="hidden section">
+          <div class="title">Lobby da Partida</div>
+          <p>Código: <span id="hostGameCode"></span></p>
+          <div style="text-align:center;">
+            <div id="qrCodeLobby"></div>
+            <p id="hostLinkInfo" style="margin-top:5px;font-size:0.9rem;"></p>
+          </div>
+          <h4 style="margin-top:10px;">Jogadores Conectados</h4>
+          <div id="hostPlayersList"></div>
+          <button id="btnStartGame" class="btn-primary" style="margin-top:10px;">
+            Iniciar Partida
+          </button>
+        </div>
+
+        <div id="hostGame" class="hidden section">
+          <div id="hostStatusPanel" class="status-panel"></div>
+
+          <div style="text-align:center;margin-bottom:10px;" id="qrCodeGame"></div>
+
+          <h4>Carta Atual</h4>
+          <div id="currentCardHost">Nenhuma</div>
+          <button id="btnDrawCard" class="btn-warning" style="margin-top:8px;">
+            &#x1F0CF; Puxar Carta
+          </button>
+
+          <h4 style="margin-top:15px;">Baralho</h4>
+          <div id="deckCount"></div>
+          <div id="deckView"></div>
+
+          <h4 style="margin-top:15px;">Regras Ativas</h4>
+          <div id="hostRules" class="rules-box"></div>
+
+          <h4 style="margin-top:15px;">Jogadores</h4>
+          <div id="hostPlayersStatus"></div>
+
+          <h4 style="margin-top:15px;">Painel (Eventos)</h4>
+          <div id="hostPainel" class="panel-box"></div>
+
+          <h4>Chat</h4>
+          <div id="hostChat" class="panel-box"></div>
+          <input type="text" id="hostChatInput" placeholder="Digite uma mensagem..." />
+          <button id="btnHostSendChat" class="btn-info">Enviar</button>
+
+          <button id="btnEndGame" class="btn-danger" style="margin-top:10px;">Encerrar Partida</button>
+        </div>
+      </div>
+
+      <!-- PLAYER AREA -->
+      <div id="playerArea" class="hidden">
+        <div id="playerStep1" class="section">
+          <div class="title">Entrar Numa Partida</div>
+          <input type="text" id="inputGameCodePlayer" placeholder="Código..." />
+          <button id="btnEnterCodePlayer" class="btn-info" style="margin-top:8px;">Entrar</button>
+          <p style="margin-top:8px;font-size:0.8rem;text-align:center;">ou use o QR Code</p>
+        </div>
+
+        <div id="playerRegister" class="hidden section">
+          <div class="title">Digite Seu Nome</div>
+          <input type="text" id="inputPlayerName" placeholder="Seu nome..." />
+          <button id="btnJoinPlayerGame" class="btn-success" style="margin-top:8px;">Entrar na Partida</button>
+        </div>
+
+        <div id="playerLobby" class="hidden section">
+          <div class="title">Aguardando Organizador Iniciar...</div>
+          <div id="playerLobbyList"></div>
+        </div>
+
+        <div id="playerGame" class="hidden section">
+          <div id="playerStatusPanel" class="status-panel hidden"></div>
+
+          <h4>Carta Atual</h4>
+          <div id="currentCardPlayer">Nenhuma</div>
+          <button id="btnDrawCardPlayer" class="btn-warning" style="display:none; margin-top:8px;">
+            &#x1F0CF; Puxar Carta
+          </button>
+
+          <h4 style="margin-top:15px;">Baralho</h4>
+          <div id="deckCountPlayer"></div>
+          <div id="deckViewPlayer"></div>
+
+          <h4 style="margin-top:15px;">Regras Ativas</h4>
+          <div id="playerRules" class="rules-box"></div>
+
+          <h4 style="margin-top:15px;">Jogadores</h4>
+          <div id="playerListStatus"></div>
+
+          <div class="finger-box hidden" id="fingerBox">
+            <h4>Poder do Dedo Ativo!</h4>
+            <p>Seja rápido para não perder!</p>
+            <button id="btnFingerClick" class="btn-danger" style="margin-top:5px;">Clique agora!</button>
+            <div id="fingerQueue" style="margin-top:5px;"></div>
+          </div>
+
+          <div style="text-align:center;">
+            <button id="btnUseJoker" class="btn-info" style="display:none;">Usar Coringa</button>
+            <button id="btnActivateFinger" class="btn-warning" style="display:none;">
+              Poder do Dedo (8)
+            </button>
+            <button id="btnRecordVideo" class="btn-dark">Gravar Vídeo</button>
+          </div>
+
+          <!-- OVERLAY DE VÍDEO -->
+          <div id="videoOverlay">
+            <video id="videoPreview" autoplay muted playsinline></video>
+            <div style="margin-top:10px;">
+              <button id="btnStartRecording" class="btn-success">Iniciar</button>
+              <button id="btnStopRecording" class="btn-danger">Parar</button>
+              <button id="btnCloseVideoOverlay" class="btn-dark">Fechar</button>
+            </div>
+          </div>
+
+          <h4 style="margin-top:15px;">Painel (Eventos)</h4>
+          <div id="playerPainel" class="panel-box"></div>
+
+          <h4>Chat</h4>
+          <div id="playerChat" class="panel-box"></div>
+          <input type="text" id="playerChatInput" placeholder="Digite uma mensagem..." />
+          <button id="btnPlayerSendChat" class="btn-info">Enviar</button>
+        </div>
+      </div>
+    </div><!-- contentScroll -->
+  </div><!-- mainContainer -->
+
+  <!-- Link para o arquivo JavaScript externo -->
+  <script src="script.js"></script>
+</body>
+</html>
