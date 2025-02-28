@@ -158,7 +158,13 @@ btnCloseRules.onclick = () => {
       myPlayerKey = savedKey;
       db.ref(`games/${gameCode}`).on('value', s=>{
         if(!s.exists())return;
-        updatePlayerView(s.val());
+        const gameData = s.val();
+        updatePlayerView(gameData);
+        
+        // Se a partida acabou, limpa o cache
+        if(gameData.status === 'finished') {
+          clearPlayerCache();
+        }
       });
       // Ajusta telas
       modeSelect.classList.add('hidden');
@@ -166,11 +172,22 @@ btnCloseRules.onclick = () => {
       playerStep1.classList.add('hidden');
       playerRegister.classList.add('hidden');
     } else {
-      localStorage.removeItem("opoderdedo_gameId");
-      localStorage.removeItem("opoderdedo_playerKey");
+      clearPlayerCache();
     }
   }
 })();
+
+// Limpa o cache do jogador
+function clearPlayerCache() {
+  localStorage.removeItem("opoderdedo_gameId");
+  localStorage.removeItem("opoderdedo_playerKey");
+  localStorage.removeItem("opoderdedo_playerName");
+  
+  // Volta para a tela inicial quando o jogo acabar ou o jogador for removido
+  setTimeout(() => {
+    window.location.href = window.location.pathname;
+  }, 2000);
+}
 
 /********** FUNÇÕES DE HOST **********/
 async function createGameAsHost(){
@@ -225,6 +242,8 @@ function subscribeHost(code){
       renderHostGame(data);
     } else if(data.status==='finished'){
       alert("Partida Encerrada!");
+      // Se quiser limpar o host também:
+      // window.location.href = window.location.pathname;
     }
   });
 }
@@ -302,7 +321,10 @@ async function drawCardHost(){
   });
 }
 function endGameHost(){
-  db.ref(`games/${gameCode}`).update({status:'finished'});
+  if(confirm("Tem certeza que deseja encerrar a partida?")) {
+    db.ref(`games/${gameCode}`).update({status:'finished'});
+    addLog("Partida encerrada pelo organizador!");
+  }
 }
 function sendChatAsHost(){
   const txt= hostChatInput.value.trim();
@@ -435,7 +457,7 @@ function sendDrinkAlert(playerIndex, gameData){
   db.ref(`games/${gameCode}/players/${pKey}/needsToDrink`).set(Date.now());
 }
 
-// Função para finalizar o poder do dedo (não estava sendo chamada)
+// Função para finalizar o poder do dedo
 function finalizeFingerPower() {
   db.ref(`games/${gameCode}/fingerPower`).once('value', snap=>{
     const fp= snap.val();
@@ -469,6 +491,11 @@ function enterCodePlayer(){
       alert("Partida não encontrada!");
       return;
     }
+    const data = snap.val();
+    if(data.status === 'finished') {
+      alert("Esta partida já foi encerrada!");
+      return;
+    }
     gameCode= code;
     playerStep1.classList.add('hidden');
     playerRegister.classList.remove('hidden');
@@ -492,7 +519,14 @@ async function registerPlayerInGame(){
 
   db.ref(`games/${gameCode}`).on('value', s=>{
     if(!s.exists())return;
-    updatePlayerView(s.val());
+    const gameData = s.val();
+    updatePlayerView(gameData);
+    
+    // Se a partida acabou, limpa o cache
+    if(gameData.status === 'finished') {
+      alert("A partida foi encerrada!");
+      clearPlayerCache();
+    }
   });
 
   playerRegister.classList.add('hidden');
@@ -601,6 +635,7 @@ function updatePlayerView(gameData){
   }
   else if(gameData.status==='finished'){
     alert("Partida Encerrada!");
+    clearPlayerCache();
   }
 }
 async function drawCardPlayer(){
