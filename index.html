@@ -88,31 +88,39 @@
 
           <div style="text-align:center;margin-bottom:10px;" id="qrCodeGame"></div>
 
-          <h4>Carta Atual</h4>
-          <div id="currentCardHost">Nenhuma</div>
-          <button id="btnDrawCard" class="btn-warning" style="margin-top:8px;">
-            &#x1F0CF; Puxar Carta
-          </button>
-
-          <h4 style="margin-top:15px;">Baralho</h4>
-          <div id="deckCount"></div>
-          <div id="deckView"></div>
-
-          <h4 style="margin-top:15px;">Regras Ativas</h4>
-          <div id="hostRules" class="rules-box"></div>
-
-          <h4 style="margin-top:15px;">Jogadores</h4>
-          <div id="hostPlayersStatus"></div>
-
-          <h4 style="margin-top:15px;">Painel (Eventos)</h4>
-          <div id="hostPainel" class="panel-box"></div>
-
-          <h4>Chat</h4>
-          <div id="hostChat" class="panel-box"></div>
-          <input type="text" id="hostChatInput" placeholder="Digite uma mensagem..." />
-          <button id="btnHostSendChat" class="btn-info">Enviar</button>
-
-          <button id="btnEndGame" class="btn-danger" style="margin-top:10px;">Encerrar Partida</button>
+          <div class="game-layout">
+            <div class="game-left-column">
+              <h4>Carta Atual</h4>
+              <div id="currentCardHost">Nenhuma</div>
+              <button id="btnDrawCard" class="btn-warning" style="margin-top:8px;">
+                &#x1F0CF; Puxar Carta
+              </button>
+              
+              <h4 style="margin-top:15px;">Baralho</h4>
+              <div id="deckCount"></div>
+              <div id="deckView"></div>
+              
+              <h4 style="margin-top:15px;">Regras Ativas</h4>
+              <div id="hostRules" class="rules-box"></div>
+              
+              <h4 style="margin-top:15px;">Jogadores</h4>
+              <div id="hostPlayersStatus"></div>
+            </div>
+            
+            <div class="game-center-column">
+              <h4 style="text-align:center;">Painel (Eventos)</h4>
+              <div id="hostPainel" class="panel-box central-panel"></div>
+            </div>
+            
+            <div class="game-right-column">
+              <h4>Chat</h4>
+              <div id="hostChat" class="panel-box"></div>
+              <input type="text" id="hostChatInput" placeholder="Digite uma mensagem..." />
+              <button id="btnHostSendChat" class="btn-info">Enviar</button>
+              
+              <button id="btnEndGame" class="btn-danger" style="margin-top:10px;">Encerrar Partida</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -138,36 +146,52 @@
 
         <div id="playerGame" class="hidden section">
           <div id="playerStatusPanel" class="status-panel hidden"></div>
-
-          <h4>Carta Atual</h4>
-          <div id="currentCardPlayer">Nenhuma</div>
-          <button id="btnDrawCardPlayer" class="btn-warning" style="display:none; margin-top:8px;">
-            &#x1F0CF; Puxar Carta
-          </button>
-
-          <h4 style="margin-top:15px;">Baralho</h4>
-          <div id="deckCountPlayer"></div>
-          <div id="deckViewPlayer"></div>
-
-          <h4 style="margin-top:15px;">Regras Ativas</h4>
-          <div id="playerRules" class="rules-box"></div>
-
-          <h4 style="margin-top:15px;">Jogadores</h4>
-          <div id="playerListStatus"></div>
-
-          <div class="finger-box hidden" id="fingerBox">
-            <h4>Poder do Dedo Ativo!</h4>
-            <p>Seja rápido para não perder!</p>
-            <button id="btnFingerClick" class="btn-danger" style="margin-top:5px;">Clique agora!</button>
-            <div id="fingerQueue" style="margin-top:5px;"></div>
-          </div>
-
-          <div style="text-align:center;">
-            <button id="btnUseJoker" class="btn-info" style="display:none;">Usar Coringa</button>
-            <button id="btnActivateFinger" class="btn-warning" style="display:none;">
-              Poder do Dedo (8)
-            </button>
-            <button id="btnRecordVideo" class="btn-dark">Gravar Vídeo</button>
+          
+          <div class="game-layout">
+            <div class="game-left-column">
+              <h4>Carta Atual</h4>
+              <div id="currentCardPlayer">Nenhuma</div>
+              <button id="btnDrawCardPlayer" class="btn-warning" style="display:none; margin-top:8px;">
+                &#x1F0CF; Puxar Carta
+              </button>
+              
+              <h4 style="margin-top:15px;">Baralho</h4>
+              <div id="deckCountPlayer"></div>
+              <div id="deckViewPlayer"></div>
+              
+              <h4 style="margin-top:15px;">Regras Ativas</h4>
+              <div id="playerRules" class="rules-box"></div>
+              
+              <h4 style="margin-top:15px;">Jogadores</h4>
+              <div id="playerListStatus"></div>
+              
+              <div class="finger-box hidden" id="fingerBox">
+                <h4>Poder do Dedo Ativo!</h4>
+                <p>Seja rápido para não perder!</p>
+                <button id="btnFingerClick" class="btn-danger" style="margin-top:5px;">Clique agora!</button>
+                <div id="fingerQueue" style="margin-top:5px;"></div>
+              </div>
+              
+              <div style="text-align:center; margin-top:10px;">
+                <button id="btnUseJoker" class="btn-info" style="display:none;">Usar Coringa</button>
+                <button id="btnActivateFinger" class="btn-warning" style="display:none;">
+                  Poder do Dedo (8)
+                </button>
+                <button id="btnRecordVideo" class="btn-dark">Gravar Vídeo</button>
+              </div>
+            </div>
+            
+            <div class="game-center-column">
+              <h4 style="text-align:center;">Painel (Eventos)</h4>
+              <div id="playerPainel" class="panel-box central-panel"></div>
+            </div>
+            
+            <div class="game-right-column">
+              <h4>Chat</h4>
+              <div id="playerChat" class="panel-box"></div>
+              <input type="text" id="playerChatInput" placeholder="Digite uma mensagem..." />
+              <button id="btnPlayerSendChat" class="btn-info">Enviar</button>
+            </div>
           </div>
 
           <!-- OVERLAY DE VÍDEO -->
@@ -179,14 +203,6 @@
               <button id="btnCloseVideoOverlay" class="btn-dark">Fechar</button>
             </div>
           </div>
-
-          <h4 style="margin-top:15px;">Painel (Eventos)</h4>
-          <div id="playerPainel" class="panel-box"></div>
-
-          <h4>Chat</h4>
-          <div id="playerChat" class="panel-box"></div>
-          <input type="text" id="playerChatInput" placeholder="Digite uma mensagem..." />
-          <button id="btnPlayerSendChat" class="btn-info">Enviar</button>
         </div>
       </div>
     </div><!-- contentScroll -->
