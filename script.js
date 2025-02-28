@@ -9,7 +9,19 @@ const firebaseConfig = {
   appId: "1:931089125837:web:fa22ae36bd206f28cf7484",
   measurementId: "G-6YE1KQ0VQC"
 };
-firebase.initializeApp(firebaseConfig);
+
+// Inicialização do Firebase
+try {
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const storage = firebase.storage();
+  console.log("Firebase inicializado com sucesso!");
+} catch (error) {
+  console.error("Erro ao inicializar Firebase:", error);
+  showToast("Erro ao conectar com o servidor. Tente novamente mais tarde.", "error");
+}
+
+// Referências Firebase
 const db = firebase.database();
 const storage = firebase.storage();
 
@@ -119,6 +131,7 @@ let localCameraStream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 let playerName = null; // Para armazenar o nome do jogador atual
+let isHostMode = false; // Controle do modo de jogo (host ou player)
 
 // Descrições de cada carta para instruções
 const cardInstructions = {
@@ -156,36 +169,77 @@ const cardIcons = {
   'Joker': 'fa-star'
 };
 
+// Emojis para cada carta (para melhorar a narrativa)
+const cardEmojis = {
+  'A': '👉',
+  '2': '🍻',
+  '3': '🥃',
+  '4': '🏷️',
+  '5': '🙅‍♂️',
+  '6': '💥',
+  '7': '✂️',
+  '8': '👆',
+  '9': '🔄',
+  '10': '⏭️',
+  'J': '🥂',
+  'Q': '👩',
+  'K': '👨',
+  'Joker': '🃏'
+};
+
 /********** FUNÇÕES UTILITÁRIAS DE UI **********/
 // Mostrar toast de notificação
 function showToast(message, type = 'info', duration = 3000) {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i> ${message}`;
+  
+  // Escolha o ícone baseado no tipo de toast
+  let icon = 'info-circle';
+  if (type === 'success') icon = 'check-circle';
+  else if (type === 'error') icon = 'exclamation-circle';
+  else if (type === 'warning') icon = 'exclamation-triangle';
+  
+  toast.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
   toastContainer.appendChild(toast);
   
+  // Adiciona um efeito de fade out antes de remover
   setTimeout(() => {
     toast.style.opacity = '0';
     setTimeout(() => {
       toast.remove();
     }, 300);
   }, duration);
+  
+  // Reproduz um som de notificação (opcional)
+  playNotificationSound(type);
+}
+
+// Sons para notificações
+function playNotificationSound(type) {
+  // Esta função poderia ser expandida para reproduzir sons diferentes
+  // baseados no tipo de notificação
+  // Exemplo: const sound = new Audio(`sounds/${type}.mp3`);
+  // sound.play();
 }
 
 // Mostrar overlay de carregamento
 function showLoading(message = 'Conectando ao jogo...') {
-  loadingScreen.querySelector('p').textContent = message;
+  const messageEl = loadingScreen.querySelector('p');
+  if (messageEl) messageEl.textContent = message;
   loadingScreen.classList.remove('hidden');
+  document.body.style.overflow = 'hidden'; // Previne rolagem enquanto carrega
 }
 
 // Esconder overlay de carregamento
 function hideLoading() {
   loadingScreen.classList.add('hidden');
+  document.body.style.overflow = ''; // Restaura rolagem
 }
 
 // Definir modo e nome do usuário
 function setUserMode(mode, name = null) {
   userModeIndicator.classList.remove('hidden');
+  isHostMode = (mode === 'host');
   
   if (mode === 'host') {
     userRoleText.textContent = 'Organizador';
@@ -232,16 +286,60 @@ function showCardInstruction(role, rank) {
 
 // Copiar texto para o clipboard
 function copyTextToClipboard(text) {
-  const textArea = document.createElement('textarea');
-  textArea.value = text;
-  document.body.appendChild(textArea);
-  textArea.select();
-  document.execCommand('copy');
-  document.body.removeChild(textArea);
-  showToast('Código copiado para a área de transferência!', 'success');
+  if (!text) return;
+  
+  // Use a API Clipboard moderna se disponível
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Código copiado para a área de transferência!', 'success');
+    }).catch(err => {
+      console.error('Erro ao copiar texto: ', err);
+      fallbackCopyTextToClipboard(text);
+    });
+  } else {
+    fallbackCopyTextToClipboard(text);
+  }
 }
 
+// Método alternativo para copiar texto
+function fallbackCopyTextToClipboard(text) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
+  
+  try {
+    const successful = document.execCommand('copy');
+    if (successful) {
+      showToast('Código copiado para a área de transferência!', 'success');
+    } else {
+      showToast('Não foi possível copiar o código', 'error');
+    }
+  } catch (err) {
+    console.error('Erro ao copiar texto: ', err);
+    showToast('Erro ao copiar o código', 'error');
+  }
+  
+  document.body.removeChild(textArea);
+}
+
+// Detectar se a conexão caiu
+window.addEventListener('online', () => {
+  showToast('Conexão restaurada!', 'success');
+});
+
+window.addEventListener('offline', () => {
+  showToast('Você está offline. Verifique sua conexão.', 'error');
+});
+
 /********** EVENTOS BÁSICOS **********/
+document.addEventListener('DOMContentLoaded', () => {
+  // Esconde o loading inicial quando a página carregar
+  hideLoading();
+});
+
 btnHost.onclick = () => {
   modeSelect.classList.add('hidden');
   hostArea.classList.remove('hidden');
@@ -263,7 +361,7 @@ btnCreateGame.onclick = createGameAsHost;
 btnJoinGameHost.onclick = joinGameAsHost;
 btnStartGame.onclick = startGameHost;
 btnDrawCard.onclick = drawCardHost;
-btnEndGame.onclick = endGameHost;
+btnEndGame.onclick = confirmEndGame;
 btnHostSendChat.onclick = sendChatAsHost;
 btnEndFingerPower.onclick = finalizeFingerPower;
 
@@ -274,7 +372,7 @@ btnDrawCardPlayer.onclick = drawCardPlayer;
 btnUseJoker.onclick = useJokerPlayer;
 btnActivateFinger.onclick = activateFingerPower;
 btnFingerClick.onclick = fingerClick;
-btnRecordVideo.onclick = ()=>videoOverlay.style.display='flex';
+btnRecordVideo.onclick = showVideoOverlay;
 btnCloseVideoOverlay.onclick = closeVideoOverlay;
 btnStartRecording.onclick = startVideoRecording;
 btnStopRecording.onclick = stopVideoRecording;
@@ -330,15 +428,16 @@ btnCloseRules.onclick = () => {
   }
 };
 
-/********** CHECK LOCALSTORAGE DO PLAYER **********/
+/********** VERIFICAÇÃO INICIAL E RECONNECT **********/
 (async function checkLocalStoragePlayer(){
-  const savedId = localStorage.getItem("opoderdedo_gameId");
-  const savedKey = localStorage.getItem("opoderdedo_playerKey");
-  const savedName = localStorage.getItem("opoderdedo_playerName");
-  
-  if(savedId && savedKey){
-    try {
+  try {
+    const savedId = localStorage.getItem("opoderdedo_gameId");
+    const savedKey = localStorage.getItem("opoderdedo_playerKey");
+    const savedName = localStorage.getItem("opoderdedo_playerName");
+    
+    if(savedId && savedKey){
       showLoading('Reconectando ao jogo...');
+      
       // Verifica no DB
       const snap = await db.ref(`games/${savedId}/players/${savedKey}`).once('value');
       if(snap.exists()){
@@ -350,16 +449,7 @@ btnCloseRules.onclick = () => {
           setUserMode('player', savedName);
         }
         
-        db.ref(`games/${gameCode}`).on('value', s=>{
-          if(!s.exists()) return;
-          const gameData = s.val();
-          updatePlayerView(gameData);
-          
-          // Se a partida acabou, limpa o cache
-          if(gameData.status === 'finished') {
-            clearPlayerCache();
-          }
-        });
+        db.ref(`games/${gameCode}`).on('value', handleGameDataUpdate);
         
         // Ajusta telas
         modeSelect.classList.add('hidden');
@@ -367,19 +457,50 @@ btnCloseRules.onclick = () => {
         playerStep1.classList.add('hidden');
         playerRegister.classList.add('hidden');
         
-        showToast('Conectado com sucesso!', 'success');
+        showToast('Reconectado com sucesso!', 'success');
       } else {
         clearPlayerCache();
       }
-    } catch (error) {
-      console.error("Erro ao reconectar:", error);
-      showToast('Erro ao reconectar ao jogo', 'error');
-      clearPlayerCache();
-    } finally {
-      hideLoading();
     }
+  } catch (error) {
+    console.error("Erro ao reconectar:", error);
+    showToast('Erro ao reconectar ao jogo', 'error');
+    clearPlayerCache();
+  } finally {
+    hideLoading();
   }
 })();
+
+// Manipulador de atualizações de dados do jogo
+function handleGameDataUpdate(snapshot) {
+  if(!snapshot.exists()) return;
+  
+  const gameData = snapshot.val();
+  
+  // Atualiza a visualização dependendo do modo (host ou player)
+  if (isHostMode) {
+    if(gameData.status === 'lobby'){
+      renderHostLobby(gameData);
+    } else if(gameData.status === 'ongoing'){
+      hostLobby.classList.add('hidden');
+      hostGame.classList.remove('hidden');
+      renderHostGame(gameData);
+    } else if(gameData.status === 'finished'){
+      showToast('Partida Encerrada!', 'info');
+      setTimeout(() => {
+        window.location.href = window.location.pathname;
+      }, 3000);
+    }
+  } else {
+    updatePlayerView(gameData);
+    
+    // Se a partida acabou, limpa o cache
+    if(gameData.status === 'finished') {
+      showToast('A partida foi encerrada!', 'info');
+      clearPlayerCache();
+    }
+  }
+}
 
 // Limpa o cache do jogador
 function clearPlayerCache() {
@@ -410,24 +531,26 @@ async function createGameAsHost(){
       rules: [],
       logs: [],
       fingerPower: { active: false, owner: null, queue: []},
-      chat: []
+      chat: [],
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
     };
     
     await db.ref(`games/${gameCode}`).set(initialData);
     
     showHostLobby(gameCode);
-    subscribeHost(gameCode);
+    db.ref(`games/${gameCode}`).on('value', handleGameDataUpdate);
     showToast('Partida criada com sucesso!', 'success');
   } catch (error) {
     console.error("Erro ao criar partida:", error);
-    showToast('Erro ao criar partida', 'error');
+    showToast('Erro ao criar partida: ' + error.message, 'error');
   } finally {
     hideLoading();
   }
 }
 
 async function joinGameAsHost(){
-  const code = inputGameCodeHost.value.trim();
+  const code = inputGameCodeHost.value.trim().toUpperCase();
   if (!code) {
     showToast('Digite um código de partida', 'error');
     return;
@@ -442,13 +565,19 @@ async function joinGameAsHost(){
       return;
     }
     
+    const data = snap.val();
+    if (data.status === 'finished') {
+      showToast('Esta partida já foi encerrada!', 'error');
+      return;
+    }
+    
     gameCode = code;
     showHostLobby(code);
-    subscribeHost(code);
+    db.ref(`games/${gameCode}`).on('value', handleGameDataUpdate);
     showToast('Conectado à partida!', 'success');
   } catch (error) {
     console.error("Erro ao entrar na partida:", error);
-    showToast('Erro ao entrar na partida', 'error');
+    showToast('Erro ao entrar na partida: ' + error.message, 'error');
   } finally {
     hideLoading();
   }
@@ -460,37 +589,17 @@ function showHostLobby(code){
   hostGameCode.textContent = code;
   
   // Gera o QR Code
-  qrCodeLobby.innerHTML='';
+  qrCodeLobby.innerHTML = '';
   new QRCode(qrCodeLobby, {
     text: location.origin+location.pathname+`?gameId=${code}`, 
     width: 160, 
     height: 160,
-    colorDark: "#4e73df",
+    colorDark: "#4361ee",
     colorLight: "#ffffff",
     correctLevel: QRCode.CorrectLevel.H
   });
   
   hostLinkInfo.textContent = `Link: ${location.origin+location.pathname}?gameId=${code}`;
-}
-
-function subscribeHost(code){
-  db.ref(`games/${code}`).on('value', snap => {
-    if(!snap.exists()) return;
-    
-    const data = snap.val();
-    if(data.status === 'lobby'){
-      renderHostLobby(data);
-    } else if(data.status === 'ongoing'){
-      hostLobby.classList.add('hidden');
-      hostGame.classList.remove('hidden');
-      renderHostGame(data);
-    } else if(data.status === 'finished'){
-      showToast('Partida Encerrada!', 'info');
-      setTimeout(() => {
-        window.location.href = window.location.pathname;
-      }, 3000);
-    }
-  });
 }
 
 function renderHostLobby(data){
@@ -508,20 +617,25 @@ function renderHostLobby(data){
   
   // Habilita ou desabilita o botão de iniciar baseado na quantidade de jogadores
   btnStartGame.disabled = arr.length < 2;
-  btnStartGame.title = arr.length < 2 ? 'Necessário pelo menos 2 jogadores' : 'Iniciar a partida';
-  
   if (arr.length < 2) {
     btnStartGame.classList.add('btn-disabled');
     btnStartGame.innerHTML = '<i class="fas fa-users"></i> Aguardando mais jogadores...';
+    btnStartGame.title = 'Necessário pelo menos 2 jogadores';
   } else {
     btnStartGame.classList.remove('btn-disabled');
     btnStartGame.innerHTML = '<i class="fas fa-play"></i> Iniciar Partida';
+    btnStartGame.title = 'Clique para iniciar a partida';
   }
 }
 
 function startGameHost(){
-  db.ref(`games/${gameCode}`).update({status:'ongoing'});
-  addLog('A partida foi iniciada!');
+  db.ref(`games/${gameCode}`).update({
+    status: 'ongoing',
+    updatedAt: firebase.database.ServerValue.TIMESTAMP
+  });
+  
+  addLog('🎮 A partida foi iniciada!');
+  showToast('Partida iniciada!', 'success');
 }
 
 function renderHostGame(data){
@@ -529,7 +643,9 @@ function renderHostGame(data){
   const currName = arr[data.currentPlayerIndex]?.name || '???';
   
   // Atualiza painel de status
-  hostStatusPanel.textContent = `É a vez de: ${currName}`;
+  hostStatusPanel.innerHTML = `
+    <i class="fas fa-user-circle status-icon"></i>
+    <span class="status-text">É a vez de: <strong>${currName}</strong></span>`;
   
   // Gera QR code
   qrCodeGame.innerHTML = '';
@@ -537,7 +653,7 @@ function renderHostGame(data){
     text: location.origin+location.pathname+`?gameId=${gameCode}`,
     width: 120, 
     height: 120,
-    colorDark: "#4e73df",
+    colorDark: "#4361ee",
     colorLight: "#ffffff",
     correctLevel: QRCode.CorrectLevel.H
   });
@@ -551,13 +667,17 @@ function renderHostGame(data){
     currentCardHost.innerHTML = renderCard(data.currentCard.rank, data.currentCard.suit);
     showCardInstruction('host', data.currentCard.rank);
   } else {
-    currentCardHost.textContent = "Nenhuma";
+    currentCardHost.innerHTML = '<div class="empty-message">Nenhuma carta ainda</div>';
     cardInstructionPanel.classList.add('hidden');
   }
   
   // Atualiza regras
   if (data.rules && data.rules.length > 0) {
-    hostRules.innerHTML = data.rules.map(r => `<div class="rule-item"><i class="fas fa-scroll"></i> ${r}</div>`).join('');
+    hostRules.innerHTML = data.rules.map(r => 
+      `<div class="rule-item">
+        <i class="fas fa-scroll"></i> ${r}
+      </div>`
+    ).join('');
   } else {
     hostRules.innerHTML = '<div class="empty-message">Não há regras ativas no momento</div>';
   }
@@ -596,55 +716,81 @@ function renderHostGame(data){
   }
   
   // Atualiza logs
-  if (data.logs) {
+  if (data.logs && data.logs.length > 0) {
     hostPainel.innerHTML = data.logs.map(l => `<div>${l}</div>`).join('');
     hostPainel.scrollTop = hostPainel.scrollHeight;
+  } else {
+    hostPainel.innerHTML = '<div class="empty-message">Os eventos do jogo aparecerão aqui...</div>';
   }
   
   // Atualiza chat
-  if (data.chat) {
+  if (data.chat && data.chat.length > 0) {
     hostChat.innerHTML = data.chat.map(c => 
       `<div>
         <strong>${c.from}:</strong> ${c.text}
       </div>`
     ).join('');
     hostChat.scrollTop = hostChat.scrollHeight;
+  } else {
+    hostChat.innerHTML = '<div class="empty-message">As mensagens do chat aparecerão aqui...</div>';
   }
 }
 
 async function drawCardHost(){
   try {
+    showLoading('Puxando carta...');
+    
     const snap = await db.ref(`games/${gameCode}`).once('value');
     const gameData = snap.val();
     
     if (!gameData.deck || gameData.deck.length === 0) {
-      addLog("O baralho acabou! Gere um novo baralho.");
-      showToast('O baralho acabou!', 'warning');
-      return;
+      addLog("❗ O baralho acabou! Gerando novo baralho...");
+      showToast('O baralho acabou! Novo baralho gerado.', 'warning');
+      
+      // Gera novo baralho
+      const newDeck = generateDeck();
+      await db.ref(`games/${gameCode}/deck`).set(newDeck);
+      
+      // Recurse para puxar uma carta do novo baralho
+      hideLoading();
+      return drawCardHost();
     }
     
     const card = gameData.deck[0];
     const newDeck = gameData.deck.slice(1);
     
-    handleCardEffect(card, gameData);
+    await handleCardEffect(card, gameData);
     
     await db.ref(`games/${gameCode}`).update({
       deck: newDeck,
-      currentCard: card
+      currentCard: card,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
     });
     
+    showToast(`Carta puxada: ${card.rank}${card.suit !== 'Coringa' ? card.suit : ''}`, 'success');
   } catch (error) {
     console.error("Erro ao puxar carta:", error);
-    showToast('Erro ao puxar carta', 'error');
+    showToast('Erro ao puxar carta: ' + error.message, 'error');
+  } finally {
+    hideLoading();
   }
 }
 
-function endGameHost(){
-  if (confirm("Tem certeza que deseja encerrar a partida? Todos os jogadores serão desconectados.")) {
-    db.ref(`games/${gameCode}`).update({status: 'finished'});
-    addLog("Partida encerrada pelo organizador!");
-    showToast('Partida encerrada', 'info');
+function confirmEndGame() {
+  const confirmation = confirm("Tem certeza que deseja encerrar a partida? Todos os jogadores serão desconectados.");
+  if (confirmation) {
+    endGameHost();
   }
+}
+
+function endGameHost() {
+  db.ref(`games/${gameCode}`).update({
+    status: 'finished',
+    updatedAt: firebase.database.ServerValue.TIMESTAMP
+  });
+  
+  addLog("🏁 Partida encerrada pelo organizador!");
+  showToast('Partida encerrada', 'info');
 }
 
 function sendChatAsHost(){
@@ -655,13 +801,18 @@ function sendChatAsHost(){
   
   db.ref(`games/${gameCode}/chat`).once('value', snap => {
     let arr = snap.val() || [];
-    arr.push({from: 'ORGANIZADOR', text: txt, ts: Date.now()});
+    arr.push({
+      from: 'ORGANIZADOR',
+      text: txt,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+    
     db.ref(`games/${gameCode}/chat`).set(arr);
   });
 }
 
 /********** EFEITOS DE CARTA **********/
-function handleCardEffect(card, gameData){
+async function handleCardEffect(card, gameData){
   let logs = gameData.logs || [];
   const arr = Object.values(gameData.players || {});
   const allKeys = Object.keys(gameData.players || {});
@@ -670,8 +821,11 @@ function handleCardEffect(card, gameData){
   let rules = gameData.rules || [];
   const currName = arr[idx]?.name || '???';
   
+  // Emoji correspondente à carta
+  const emoji = cardEmojis[card.rank] || '🎮';
+  
   // Registra a carta puxada com destaque visual
-  logs.push(`📝 ${currName} puxou [${card.rank}${card.suit !== 'Coringa' ? card.suit : ''}]`);
+  logs.push(`${emoji} ${currName} puxou [${card.rank}${card.suit !== 'Coringa' ? card.suit : ''}]`);
   
   let passTurn = true;
   switch(card.rank){
@@ -707,8 +861,12 @@ function handleCardEffect(card, gameData){
       
     case '7':
       if(rules.length > 0) {
-        const ruleIndex = rules.length > 1 ? 
-          prompt(`Qual regra deseja quebrar? (1-${rules.length})`) - 1 : 0;
+        let ruleIndex = 0;
+        
+        if (rules.length > 1) {
+          const selectedRule = prompt(`Qual regra deseja quebrar? (1-${rules.length})\n\n${rules.map((r, i) => `${i+1}. ${r}`).join('\n')}`);
+          ruleIndex = parseInt(selectedRule) - 1 || 0;
+        }
         
         if(ruleIndex >= 0 && ruleIndex < rules.length) {
           const removedRule = rules[ruleIndex];
@@ -721,9 +879,9 @@ function handleCardEffect(card, gameData){
       break;
       
     case '8':
-      const pKey = Object.keys(gameData.players || {})[idx];
+      const pKey = allKeys[idx];
       if(pKey){
-        db.ref(`games/${gameCode}/players/${pKey}/hasFingerPower`).set(true);
+        await db.ref(`games/${gameCode}/players/${pKey}/hasFingerPower`).set(true);
         logs.push(`👆 ${currName} obteve o Poder do Dedo!`);
       }
       break;
@@ -748,14 +906,18 @@ function handleCardEffect(card, gameData){
         logs.push(`➡️ Pulou um jogador. Agora é a vez de ${nextPlayerName}`);
         
         db.ref(`games/${gameCode}`).update({
-          currentPlayerIndex: ni, direction, rules, logs
+          currentPlayerIndex: ni, 
+          direction, 
+          rules, 
+          logs,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
         });
-      }, 500);
+      }, 1000);
       break;
       
     case 'J':
       logs.push(`🥃 ${currName} deve beber 1 dose!`);
-      sendDrinkAlert(idx, gameData);
+      await sendDrinkAlert(idx, gameData);
       break;
       
     case 'Q':
@@ -772,10 +934,10 @@ function handleCardEffect(card, gameData){
       
     case 'Joker':
       // coringa
-      const jkKey = Object.keys(gameData.players || {})[idx];
+      const jkKey = allKeys[idx];
       if(jkKey){
         const oldVal = arr[idx].jokers || 0;
-        db.ref(`games/${gameCode}/players/${jkKey}/jokers`).set(oldVal + 1);
+        await db.ref(`games/${gameCode}/players/${jkKey}/jokers`).set(oldVal + 1);
         logs.push(`🃏 ${currName} ganhou 1 Coringa para usar quando precisar!`);
       }
       break;
@@ -792,33 +954,62 @@ function handleCardEffect(card, gameData){
     const nextPlayerName = arr[ni]?.name || '???';
     logs.push(`➡️ Próximo: é a vez de ${nextPlayerName}`);
     
-    db.ref(`games/${gameCode}`).update({
-      currentPlayerIndex: ni, direction, rules, logs
+    await db.ref(`games/${gameCode}`).update({
+      currentPlayerIndex: ni, 
+      direction, 
+      rules, 
+      logs,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
     });
-  } else {
-    db.ref(`games/${gameCode}`).update({ direction, rules, logs });
+  } else if (card.rank !== '10') { // Para outros casos que não pular turnos
+    await db.ref(`games/${gameCode}`).update({ 
+      direction, 
+      rules, 
+      logs,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP 
+    });
   }
 }
 
-function sendDrinkAlert(playerIndex, gameData){
+async function sendDrinkAlert(playerIndex, gameData){
   const pKey = Object.keys(gameData.players || {})[playerIndex];
   if(!pKey) return;
-  db.ref(`games/${gameCode}/players/${pKey}/needsToDrink`).set(Date.now());
+  
+  try {
+    await db.ref(`games/${gameCode}/players/${pKey}/needsToDrink`).set(Date.now());
+  } catch (error) {
+    console.error("Erro ao enviar alerta de bebida:", error);
+  }
 }
 
 // Função para finalizar o poder do dedo
-function finalizeFingerPower() {
-  db.ref(`games/${gameCode}/fingerPower`).once('value', snap => {
+async function finalizeFingerPower() {
+  try {
+    const snap = await db.ref(`games/${gameCode}/fingerPower`).once('value');
     const fp = snap.val();
-    if(!fp || !fp.queue || fp.queue.length === 0) return;
+    
+    if(!fp || !fp.queue || fp.queue.length === 0) {
+      showToast('Ninguém ativou o poder do dedo ainda', 'info');
+      return;
+    }
     
     const last = fp.queue[fp.queue.length - 1];
     addLog(`🍺 O último a clicar foi ${last.name}, beba!`);
-    db.ref(`games/${gameCode}/players/${last.playerKey}/needsToDrink`).set(Date.now());
-    db.ref(`games/${gameCode}/fingerPower`).update({active: false, queue: []});
+    
+    await db.ref(`games/${gameCode}/players/${last.playerKey}/needsToDrink`).set(Date.now());
+    await db.ref(`games/${gameCode}/fingerPower`).update({
+      active: false, 
+      queue: [],
+      lastWinner: fp.queue[0]?.name || null,
+      lastLoser: last.name,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
     
     showToast(`${last.name} foi o último e deve beber!`, 'info');
-  });
+  } catch (error) {
+    console.error("Erro ao finalizar poder do dedo:", error);
+    showToast('Erro ao finalizar o poder do dedo', 'error');
+  }
 }
 
 /********** MODO JOGADOR **********/
@@ -836,7 +1027,7 @@ function finalizeFingerPower() {
 })();
 
 function enterCodePlayer(){
-  const code = inputGameCodePlayer.value.trim();
+  const code = inputGameCodePlayer.value.trim().toUpperCase();
   if(!code) {
     showToast('Digite um código de partida', 'error');
     return;
@@ -861,6 +1052,8 @@ function enterCodePlayer(){
     gameCode = code;
     playerStep1.classList.add('hidden');
     playerRegister.classList.remove('hidden');
+    
+    showToast('Partida encontrada!', 'success');
   });
 }
 
@@ -874,6 +1067,20 @@ async function registerPlayerInGame(){
   try {
     showLoading('Entrando na partida...');
     
+    // Verifica se o nome já existe
+    const playersSnap = await db.ref(`games/${gameCode}/players`).once('value');
+    const players = playersSnap.val() || {};
+    
+    const nameExists = Object.values(players).some(p => 
+      p.name.toLowerCase() === name.toLowerCase()
+    );
+    
+    if (nameExists) {
+      showToast('Esse nome já está sendo usado. Escolha outro.', 'error');
+      hideLoading();
+      return;
+    }
+    
     // Cria player
     const ref = db.ref(`games/${gameCode}/players`).push();
     myPlayerKey = ref.key;
@@ -881,7 +1088,8 @@ async function registerPlayerInGame(){
     await ref.set({
       name, 
       jokers: 0,
-      hasFingerPower: false
+      hasFingerPower: false,
+      joinedAt: firebase.database.ServerValue.TIMESTAMP
     });
     
     localStorage.setItem("opoderdedo_gameId", gameCode);
@@ -890,18 +1098,7 @@ async function registerPlayerInGame(){
     
     setUserMode('player', name);
     
-    db.ref(`games/${gameCode}`).on('value', s => {
-      if(!s.exists()) return;
-      
-      const gameData = s.val();
-      updatePlayerView(gameData);
-      
-      // Se a partida acabou, limpa o cache
-      if(gameData.status === 'finished') {
-        showToast('A partida foi encerrada!', 'info');
-        clearPlayerCache();
-      }
-    });
+    db.ref(`games/${gameCode}`).on('value', handleGameDataUpdate);
     
     playerRegister.classList.add('hidden');
     showToast('Você entrou na partida!', 'success');
@@ -911,7 +1108,7 @@ async function registerPlayerInGame(){
     
   } catch (error) {
     console.error("Erro ao registrar jogador:", error);
-    showToast('Erro ao entrar na partida', 'error');
+    showToast('Erro ao entrar na partida: ' + error.message, 'error');
   } finally {
     hideLoading();
   }
@@ -940,15 +1137,15 @@ function updatePlayerView(gameData){
     
     const pObj = gameData.players?.[myPlayerKey];
     if(!pObj){
-      playerStatusPanel.textContent = "Você não está no jogo?";
+      playerStatusPanel.innerHTML = `
+        <i class="fas fa-exclamation-triangle status-icon"></i>
+        <span class="status-text">Você não está no jogo!</span>`;
       showToast('Você foi removido do jogo', 'error');
       return;
     }
     
     // Info do player
     playerStatusPanel.classList.remove('hidden');
-    playerStatusPanel.style.color = '#007BFF';
-    playerStatusPanel.textContent = '';
     
     // Jogadores
     const arr = Object.values(gameData.players || {});
@@ -988,15 +1185,18 @@ function updatePlayerView(gameData){
     
     if(curKey === myPlayerKey){
       // é minha vez
-      playerStatusPanel.textContent = "É A SUA VEZ!";
+      playerStatusPanel.innerHTML = `
+        <i class="fas fa-user-circle status-icon"></i>
+        <span class="status-text">É A SUA VEZ!</span>`;
       playerStatusPanel.classList.add('your-turn');
-      playerStatusPanel.style.color = "#28a745";
       btnDrawCardPlayer.style.display = 'inline-block';
     } else {
       playerStatusPanel.classList.remove('your-turn');
       const arr2 = Object.values(gameData.players || {});
       const cName = arr2[curIdx]?.name || '???';
-      playerStatusPanel.textContent = `É a vez de: ${cName}`;
+      playerStatusPanel.innerHTML = `
+        <i class="fas fa-user-circle status-icon"></i>
+        <span class="status-text">É a vez de: <strong>${cName}</strong></span>`;
       btnDrawCardPlayer.style.display = 'none';
     }
     
@@ -1005,13 +1205,17 @@ function updatePlayerView(gameData){
       currentCardPlayer.innerHTML = renderCard(gameData.currentCard.rank, gameData.currentCard.suit);
       showCardInstruction('player', gameData.currentCard.rank);
     } else {
-      currentCardPlayer.textContent = "Nenhuma";
+      currentCardPlayer.innerHTML = '<div class="empty-message">Nenhuma carta ainda</div>';
       playerCardInstruction.classList.add('hidden');
     }
     
     // Regras
     if(gameData.rules && gameData.rules.length > 0){
-      playerRules.innerHTML = gameData.rules.map(r => `<div class="rule-item"><i class="fas fa-scroll"></i> ${r}</div>`).join('');
+      playerRules.innerHTML = gameData.rules.map(r => 
+        `<div class="rule-item">
+          <i class="fas fa-scroll"></i> ${r}
+        </div>`
+      ).join('');
     } else {
       playerRules.innerHTML = '<div class="empty-message">Não há regras ativas no momento</div>';
     }
@@ -1036,7 +1240,7 @@ function updatePlayerView(gameData){
       if(found){
         btnFingerClick.disabled = true;
         btnFingerClick.classList.remove('pulse-animation');
-        btnFingerClick.textContent = "Você já clicou!";
+        btnFingerClick.innerHTML = '<i class="fas fa-check"></i> Você já clicou!';
       } else {
         btnFingerClick.disabled = false;
         btnFingerClick.classList.add('pulse-animation');
@@ -1048,20 +1252,24 @@ function updatePlayerView(gameData){
       fingerBox.classList.add('hidden');
     }
     
-    // Painel
-    if(gameData.logs){
+    // Painel de narrativa
+    if(gameData.logs && gameData.logs.length > 0){
       playerPainel.innerHTML = gameData.logs.map(l => `<div>${l}</div>`).join('');
       playerPainel.scrollTop = playerPainel.scrollHeight;
+    } else {
+      playerPainel.innerHTML = '<div class="empty-message">Os eventos do jogo aparecerão aqui...</div>';
     }
     
     // Chat
-    if(gameData.chat){
+    if(gameData.chat && gameData.chat.length > 0){
       playerChat.innerHTML = gameData.chat.map(c => 
         `<div>
           <strong>${c.from}:</strong> ${c.text}
         </div>`
       ).join('');
       playerChat.scrollTop = playerChat.scrollHeight;
+    } else {
+      playerChat.innerHTML = '<div class="empty-message">As mensagens do chat aparecerão aqui...</div>';
     }
     
     // Needs to Drink?
@@ -1084,7 +1292,7 @@ async function drawCardPlayer(){
     const data = snap.val();
     
     if(!data) {
-      showToast('Erro ao puxar carta', 'error');
+      showToast('Erro ao puxar carta: partida não encontrada', 'error');
       return;
     }
     
@@ -1095,7 +1303,7 @@ async function drawCardPlayer(){
     }
     
     if(!data.deck || data.deck.length === 0){
-      addLog("O baralho acabou!");
+      addLog("❗ O baralho acabou!");
       showToast('O baralho acabou!', 'warning');
       return;
     }
@@ -1103,73 +1311,119 @@ async function drawCardPlayer(){
     const card = data.deck[0];
     const newDeck = data.deck.slice(1);
     
-    handleCardEffect(card, data);
+    await handleCardEffect(card, data);
     
     await db.ref(`games/${gameCode}`).update({
       deck: newDeck, 
-      currentCard: card
+      currentCard: card,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
     });
     
+    showToast(`Carta puxada: ${card.rank}${card.suit !== 'Coringa' ? card.suit : ''}`, 'success');
   } catch (error) {
     console.error("Erro ao puxar carta:", error);
-    showToast('Erro ao puxar carta', 'error');
+    showToast('Erro ao puxar carta: ' + error.message, 'error');
   } finally {
     hideLoading();
   }
 }
 
 /********** CORINGA, PODER DEDO **********/
-function useJokerPlayer(){
-  db.ref(`games/${gameCode}/players/${myPlayerKey}`).once('value', snap => {
+async function useJokerPlayer(){
+  try {
+    const snap = await db.ref(`games/${gameCode}/players/${myPlayerKey}`).once('value');
     const p = snap.val();
-    if(!p) return;
+    
+    if(!p) {
+      showToast('Erro ao usar coringa: jogador não encontrado', 'error');
+      return;
+    }
     
     if(p.jokers > 0){
-      db.ref(`games/${gameCode}/players/${myPlayerKey}/jokers`).set(p.jokers - 1);
+      await db.ref(`games/${gameCode}/players/${myPlayerKey}/jokers`).set(p.jokers - 1);
       addLog(`🌟 ${p.name} usou 1 Coringa para não beber!`);
       showToast('Você usou um coringa!', 'success');
+    } else {
+      showToast('Você não tem coringas para usar!', 'error');
     }
-  });
+  } catch (error) {
+    console.error("Erro ao usar coringa:", error);
+    showToast('Erro ao usar coringa: ' + error.message, 'error');
+  }
 }
 
-function activateFingerPower(){
-  const name = localStorage.getItem("opoderdedo_playerName") || 'Jogador';
-  
-  db.ref(`games/${gameCode}/fingerPower`).set({
-    active: true, 
-    owner: myPlayerKey,
-    queue: [{playerKey: myPlayerKey, name}]
-  });
-  
-  db.ref(`games/${gameCode}/players/${myPlayerKey}/hasFingerPower`).set(false);
-  addLog(`👆 ${name} ativou o Poder do Dedo! Seja rápido para não ser o último!`);
-  
-  showToast('Você ativou o Poder do Dedo!', 'success');
+async function activateFingerPower(){
+  try {
+    const name = localStorage.getItem("opoderdedo_playerName") || 'Jogador';
+    
+    await db.ref(`games/${gameCode}/fingerPower`).set({
+      active: true, 
+      owner: myPlayerKey,
+      queue: [{playerKey: myPlayerKey, name}],
+      activatedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+    
+    await db.ref(`games/${gameCode}/players/${myPlayerKey}/hasFingerPower`).set(false);
+    addLog(`👆 ${name} ativou o Poder do Dedo! Seja rápido para não ser o último!`);
+    
+    showToast('Você ativou o Poder do Dedo!', 'success');
+  } catch (error) {
+    console.error("Erro ao ativar poder do dedo:", error);
+    showToast('Erro ao ativar poder do dedo: ' + error.message, 'error');
+  }
 }
 
-function fingerClick(){
-  db.ref(`games/${gameCode}/fingerPower/queue`).once('value', snap => {
+async function fingerClick(){
+  try {
+    const snap = await db.ref(`games/${gameCode}/fingerPower/queue`).once('value');
     let arr = snap.val() || [];
-    if(arr.find(x => x.playerKey === myPlayerKey)) return;
+    
+    if(arr.find(x => x.playerKey === myPlayerKey)) {
+      showToast('Você já clicou!', 'info');
+      return;
+    }
     
     const name = localStorage.getItem("opoderdedo_playerName") || 'Jogador';
-    arr.push({playerKey: myPlayerKey, name});
+    arr.push({playerKey: myPlayerKey, name, clickedAt: firebase.database.ServerValue.TIMESTAMP});
     
-    db.ref(`games/${gameCode}/fingerPower/queue`).set(arr);
+    await db.ref(`games/${gameCode}/fingerPower/queue`).set(arr);
     showToast('Você clicou!', 'success');
-  });
+  } catch (error) {
+    console.error("Erro ao clicar no poder do dedo:", error);
+    showToast('Erro ao registrar seu clique: ' + error.message, 'error');
+  }
 }
 
 /********** GRAVAÇÃO VÍDEO **********/
+function showVideoOverlay() {
+  videoOverlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden'; // Previne rolagem
+}
+
 async function startVideoRecording(){
   try {
     if(!localCameraStream){
-      localCameraStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+      localCameraStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user"
+        },
+        audio: true
+      });
+      
       videoPreview.srcObject = localCameraStream;
+      
+      // Aguarda um momento para o vídeo carregar
+      await new Promise(resolve => {
+        videoPreview.onloadedmetadata = resolve;
+      });
     }
     
     recordedChunks = [];
-    mediaRecorder = new MediaRecorder(localCameraStream);
+    mediaRecorder = new MediaRecorder(localCameraStream, {
+      mimeType: 'video/webm;codecs=vp9,opus'
+    });
     
     mediaRecorder.ondataavailable = e => {
       if(e.data.size > 0) recordedChunks.push(e.data);
@@ -1181,7 +1435,8 @@ async function startVideoRecording(){
         
         try {
           const blob = new Blob(recordedChunks, {type: 'video/mp4'});
-          const ref = storage.ref(`games/${gameCode}/videos/${Date.now()}.mp4`);
+          const filename = `${gameCode}_${Date.now()}_${playerName.replace(/\s+/g, '_')}.mp4`;
+          const ref = storage.ref(`games/${gameCode}/videos/${filename}`);
           
           await ref.put(blob);
           const url = await ref.getDownloadURL();
@@ -1190,19 +1445,38 @@ async function startVideoRecording(){
           showToast('Vídeo enviado com sucesso!', 'success');
         } catch (error) {
           console.error("Erro ao enviar vídeo:", error);
-          showToast('Erro ao enviar vídeo', 'error');
+          showToast('Erro ao enviar vídeo: ' + error.message, 'error');
         } finally {
           hideLoading();
         }
       }
     };
     
+    // Definir intervalo para parar automaticamente após 30 segundos
     mediaRecorder.start();
+    
+    // Cronômetro de gravação
+    let seconds = 0;
+    const maxSeconds = 30; // Máximo de 30 segundos
+    
+    const recordingTimer = setInterval(() => {
+      seconds++;
+      btnStartRecording.innerHTML = `<i class="fas fa-record-vinyl"></i> Gravando (${maxSeconds - seconds}s)`;
+      
+      if (seconds >= maxSeconds) {
+        clearInterval(recordingTimer);
+        stopVideoRecording();
+      }
+    }, 1000);
+    
+    // Armazenar o timer para limpar se o usuário parar manualmente
+    mediaRecorder.recordingTimer = recordingTimer;
+    
     addLog(`🎬 ${playerName || 'Um jogador'} iniciou uma gravação de vídeo...`);
-    showToast('Gravação iniciada!', 'info');
+    showToast('Gravação iniciada! Máximo de 30 segundos.', 'info');
     
     // Altera a aparência do botão de iniciar
-    btnStartRecording.innerHTML = '<i class="fas fa-record-vinyl"></i> Gravando...';
+    btnStartRecording.innerHTML = '<i class="fas fa-record-vinyl"></i> Gravando (30s)';
     btnStartRecording.classList.add('btn-danger');
     btnStartRecording.disabled = true;
     
@@ -1214,6 +1488,11 @@ async function startVideoRecording(){
 
 function stopVideoRecording(){
   if(mediaRecorder && mediaRecorder.state === 'recording'){
+    // Limpar o timer se existir
+    if (mediaRecorder.recordingTimer) {
+      clearInterval(mediaRecorder.recordingTimer);
+    }
+    
     mediaRecorder.stop();
     showToast('Gravação finalizada', 'success');
     
@@ -1226,6 +1505,7 @@ function stopVideoRecording(){
 
 function closeVideoOverlay(){
   videoOverlay.style.display = 'none';
+  document.body.style.overflow = ''; // Restaura rolagem
   
   if(localCameraStream){
     localCameraStream.getTracks().forEach(t => t.stop());
@@ -1251,18 +1531,33 @@ function sendChatAsPlayer(){
     let arr = snap.val() || [];
     const name = localStorage.getItem("opoderdedo_playerName") || 'Jogador';
     
-    arr.push({from: name, text: txt, ts: Date.now()});
+    arr.push({
+      from: name, 
+      text: txt, 
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+    
     db.ref(`games/${gameCode}/chat`).set(arr);
   });
 }
 
 /********** LOG HELPER **********/
-function addLog(msg){
-  db.ref(`games/${gameCode}/logs`).once('value', snap => {
+async function addLog(msg){
+  try {
+    const snap = await db.ref(`games/${gameCode}/logs`).once('value');
     let arr = snap.val() || [];
+    
+    // Limitar a 100 logs para não sobrecarregar
+    if (arr.length > 100) {
+      arr = arr.slice(arr.length - 99);
+    }
+    
     arr.push(msg);
-    db.ref(`games/${gameCode}/logs`).set(arr);
-  });
+    
+    await db.ref(`games/${gameCode}/logs`).set(arr);
+  } catch (error) {
+    console.error("Erro ao adicionar log:", error);
+  }
 }
 
 /********** GERA CODE E BARALHO **********/
@@ -1281,23 +1576,29 @@ function generateDeck(){
     }
   }
   
+  // Adiciona 3 coringas
   for(let i = 0; i < 3; i++){
     deck.push({rank: 'Joker', suit: 'Coringa'});
   }
   
-  // shuffle
+  // Embaralha as cartas
+  shuffleDeck(deck);
+  
+  return deck;
+}
+
+// Algoritmo Fisher-Yates para embaralhar
+function shuffleDeck(deck) {
   for(let i = deck.length - 1; i > 0; i--){
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
-  
-  return deck;
 }
 
 function renderCard(rank, suit){
   if(rank === 'Joker'){
     return `
-      <div class="card-front" style="background: linear-gradient(45deg, #ffd700, #ffec8b);">
+      <div class="card-front highlight-card" style="background: linear-gradient(45deg, #ffd700, #ffec8b);">
         <div style="position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-size:1.2rem; color:#000; font-weight:bold; text-align:center;">
           <i class="fas fa-star" style="color:#B8860B; font-size:1.5rem; margin-bottom:5px;"></i><br>
           CORINGA
@@ -1309,7 +1610,7 @@ function renderCard(rank, suit){
   const isRed = (suit === '♥' || suit === '♦');
   
   return `
-    <div class="card-front">
+    <div class="card-front highlight-card">
       <div class="card-rank-suit ${isRed ? 'red' : 'black'}">
         ${rank}${suit}
       </div>
@@ -1319,3 +1620,15 @@ function renderCard(rank, suit){
     </div>
   `;
 }
+
+// Verificar saúde da conexão com o Firebase
+setInterval(() => {
+  if (gameCode) {
+    db.ref('.info/connected').once('value', snapshot => {
+      const connected = snapshot.val();
+      if (!connected) {
+        showToast('Problema de conexão com o servidor. Reconectando...', 'warning');
+      }
+    });
+  }
+}, 60000); // Verificar a cada minuto
