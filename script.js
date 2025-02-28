@@ -45,6 +45,7 @@ const hostChat = document.getElementById('hostChat');
 const hostChatInput = document.getElementById('hostChatInput');
 const btnHostSendChat = document.getElementById('btnHostSendChat');
 const btnEndGame = document.getElementById('btnEndGame');
+const btnEndFingerPower = document.getElementById('btnEndFingerPower');
 
 // Player
 const playerArea = document.getElementById('playerArea');
@@ -89,6 +90,12 @@ let localCameraStream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 
+// Elementos das regras
+const rulesInfo = document.getElementById('rulesInfo');
+const btnViewRules = document.getElementById('btnViewRules');
+const btnShowRules = document.getElementById('btnShowRules');
+const btnCloseRules = document.getElementById('btnCloseRules');
+
 /********** EVENTOS BÁSICOS **********/
 btnHost.onclick = () => {
   modeSelect.classList.add('hidden');
@@ -106,6 +113,7 @@ btnStartGame.onclick = startGameHost;
 btnDrawCard.onclick = drawCardHost;
 btnEndGame.onclick = endGameHost;
 btnHostSendChat.onclick = sendChatAsHost;
+btnEndFingerPower.onclick = finalizeFingerPower;
 
 // Player
 btnEnterCodePlayer.onclick = enterCodePlayer;
@@ -119,6 +127,23 @@ btnCloseVideoOverlay.onclick = closeVideoOverlay;
 btnStartRecording.onclick = startVideoRecording;
 btnStopRecording.onclick = stopVideoRecording;
 btnPlayerSendChat.onclick = sendChatAsPlayer;
+
+// Regras
+btnViewRules.onclick = () => {
+  modeSelect.classList.add('hidden');
+  rulesInfo.classList.remove('hidden');
+};
+btnShowRules.onclick = () => {
+  rulesInfo.classList.remove('hidden');
+};
+btnCloseRules.onclick = () => {
+  rulesInfo.classList.add('hidden');
+  if (modeSelect.classList.contains('hidden') && 
+      hostArea.classList.contains('hidden') && 
+      playerArea.classList.contains('hidden')) {
+    modeSelect.classList.remove('hidden');
+  }
+};
 
 /********** CHECK LOCALSTORAGE DO PLAYER **********/
 (async function checkLocalStoragePlayer(){
@@ -240,8 +265,17 @@ function renderHostGame(data){
   hostPlayersStatus.innerHTML= arr.map((p,i)=>{
     const isCurrent= (i===data.currentPlayerIndex)?' (Vez)':'';
     const coringas= p.jokers>0? ` [Coringas: ${p.jokers}]`:'';
-    return `<div><strong>${p.name}</strong>${isCurrent}${coringas}</div>`;
+    const fingerPower = p.hasFingerPower ? ' [Tem Poder do Dedo]' : '';
+    return `<div><strong>${p.name}</strong>${isCurrent}${coringas}${fingerPower}</div>`;
   }).join('');
+
+  // Mostra ou esconde o botão de finalizar o poder do dedo
+  const fp = data.fingerPower || {};
+  if(fp.active){
+    btnEndFingerPower.style.display = 'inline-block';
+  } else {
+    btnEndFingerPower.style.display = 'none';
+  }
 
   if(data.logs){
     hostPainel.innerHTML= data.logs.map(l=>`<div>${l}</div>`).join('');
@@ -285,6 +319,7 @@ function sendChatAsHost(){
 function handleCardEffect(card, gameData){
   let logs= gameData.logs||[];
   const arr= Object.values(gameData.players||{});
+  const allKeys = Object.keys(gameData.players||{});
   let idx= gameData.currentPlayerIndex;
   let direction= gameData.direction;
   let rules= gameData.rules||[];
@@ -293,16 +328,43 @@ function handleCardEffect(card, gameData){
 
   let passTurn=true;
   switch(card.rank){
+    case 'A':
+      logs.push(`${currName} deve escolher alguém para beber 1 dose!`);
+      break;
+    case '2':
+      logs.push(`${currName} deve distribuir 2 doses para outras pessoas!`);
+      break;
+    case '3':
+      logs.push(`${currName} deve distribuir 3 doses para três pessoas diferentes!`);
+      break;
     case '4':
-      const newRule= prompt("Nova regra?");
+      logs.push(`"Marca de..." - ${currName} escolhe uma categoria`);
+      const newRule= prompt("Nova regra? (Marca de...)");
       if(newRule){
         rules.push(newRule);
         logs.push(`Regra adicionada: "${newRule}"`);
       }
       break;
+    case '5':
+      logs.push(`"Eu nunca..." - ${currName} deve falar algo que nunca fez. Quem já fez, bebe!`);
+      break;
     case '6':
       rules=[];
       logs.push("Todas as regras foram quebradas!");
+      break;
+    case '7':
+      if(rules.length > 0) {
+        const ruleIndex = rules.length > 1 ? 
+          prompt(`Qual regra deseja quebrar? (1-${rules.length})`) - 1 : 0;
+        
+        if(ruleIndex >= 0 && ruleIndex < rules.length) {
+          const removedRule = rules[ruleIndex];
+          rules.splice(ruleIndex, 1);
+          logs.push(`${currName} quebrou a regra: "${removedRule}"`);
+        }
+      } else {
+        logs.push(`${currName} tentou quebrar uma regra, mas não há regras ativas!`);
+      }
       break;
     case '8':
       const pKey= Object.keys(gameData.players||{})[idx];
@@ -335,9 +397,13 @@ function handleCardEffect(card, gameData){
       break;
     case 'Q':
       logs.push("Todas as mulheres bebem 1 dose!");
+      // Implementação futura: poderíamos adicionar um campo de gênero para cada jogador
+      // e enviar alertas de bebida apenas para jogadoras mulheres
       break;
     case 'K':
       logs.push("Todos os homens bebem 1 dose!");
+      // Implementação futura: poderíamos adicionar um campo de gênero para cada jogador
+      // e enviar alertas de bebida apenas para jogadores homens
       break;
     case 'Joker':
       // coringa
@@ -349,7 +415,7 @@ function handleCardEffect(card, gameData){
       }
       break;
     default:
-      // A,2,3,5,7 etc
+      logs.push(`Carta sem efeito especial.`);
   }
 
   if(passTurn && card.rank!=='10'){
@@ -367,6 +433,18 @@ function sendDrinkAlert(playerIndex, gameData){
   const pKey= Object.keys(gameData.players||{})[playerIndex];
   if(!pKey)return;
   db.ref(`games/${gameCode}/players/${pKey}/needsToDrink`).set(Date.now());
+}
+
+// Função para finalizar o poder do dedo (não estava sendo chamada)
+function finalizeFingerPower() {
+  db.ref(`games/${gameCode}/fingerPower`).once('value', snap=>{
+    const fp= snap.val();
+    if(!fp||!fp.queue||fp.queue.length===0)return;
+    const last= fp.queue[fp.queue.length-1];
+    addLog(`O último a clicar foi ${last.name}, beba!`);
+    db.ref(`games/${gameCode}/players/${last.playerKey}/needsToDrink`).set(Date.now());
+    db.ref(`games/${gameCode}/fingerPower`).update({active:false, queue:[]});
+  });
 }
 
 /********** MODO JOGADOR **********/
@@ -574,16 +652,6 @@ function fingerClick(){
     const name= localStorage.getItem("opoderdedo_playerName")|| 'Jogador';
     arr.push({playerKey:myPlayerKey, name});
     db.ref(`games/${gameCode}/fingerPower/queue`).set(arr);
-  });
-}
-function finalizeFingerPower(){
-  db.ref(`games/${gameCode}/fingerPower`).once('value', snap=>{
-    const fp= snap.val();
-    if(!fp||!fp.queue||fp.queue.length===0)return;
-    const last= fp.queue[fp.queue.length-1];
-    addLog(`O último a clicar foi ${last.name}, beba!`);
-    db.ref(`games/${gameCode}/players/${last.playerKey}/needsToDrink`).set(Date.now());
-    db.ref(`games/${gameCode}/fingerPower`).update({active:false, queue:[]});
   });
 }
 
