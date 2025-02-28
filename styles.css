@@ -45,6 +45,31 @@ body, html {
   gap: 20px;
 }
 
+/* Estilos para regras do jogo */
+.rules-content {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.rules-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.rules-list li {
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+}
+
+#btnShowRules {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  z-index: 100;
+  opacity: 0.8;
+}
+
 h1 {
   text-align: center;
   margin: 10px 0;
