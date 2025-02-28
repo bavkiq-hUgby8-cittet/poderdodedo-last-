@@ -21,12 +21,38 @@
   <div id="mainContainer">
     <div id="contentScroll">
       <h1>O Poder do Dedo</h1>
+      
+      <!-- Regras do Jogo (inicialmente ocultas) -->
+      <div id="rulesInfo" class="hidden section">
+        <div class="title">Regras do Jogo</div>
+        <div class="rules-content">
+          <h4>Efeitos das Cartas:</h4>
+          <ul class="rules-list">
+            <li><strong>A (Ás):</strong> O jogador escolhe alguém para beber uma dose.</li>
+            <li><strong>2:</strong> O jogador distribui duas doses para outras pessoas.</li>
+            <li><strong>3:</strong> O jogador distribui três doses para três pessoas diferentes.</li>
+            <li><strong>4:</strong> "Marca de..." O jogador escolhe uma categoria, e os jogadores devem falar uma marca dessa categoria até que alguém erre e tenha que beber.</li>
+            <li><strong>5:</strong> "Eu nunca..." O jogador fala uma afirmação sobre algo que nunca fez. Quem já fez, bebe uma dose.</li>
+            <li><strong>6:</strong> O jogador quebra todas as regras existentes.</li>
+            <li><strong>7:</strong> O jogador quebra uma regra existente.</li>
+            <li><strong>8:</strong> O jogador recebe o "Poder do Dedo" (pode ser ativado a qualquer momento).</li>
+            <li><strong>9:</strong> Inverte o sentido do jogo (horário/anti-horário).</li>
+            <li><strong>10:</strong> A vez passa para o jogador depois do próximo (pula um jogador).</li>
+            <li><strong>J (Valete):</strong> O jogador que puxou a carta bebe uma dose.</li>
+            <li><strong>Q (Dama):</strong> Todas as mulheres bebem uma dose.</li>
+            <li><strong>K (Rei):</strong> Todos os homens bebem uma dose.</li>
+            <li><strong>Coringa:</strong> O jogador ganha um coringa que pode ser usado para evitar beber.</li>
+          </ul>
+        </div>
+        <button id="btnCloseRules" class="btn-primary">Fechar Regras</button>
+      </div>
 
       <!-- Modo Seletor -->
       <div id="modeSelect" class="section">
         <div class="title">Você é o Organizador ou Jogador?</div>
         <button id="btnHost" class="btn-dark">Organizador</button>
         <button id="btnPlayer" class="btn-primary">Jogador</button>
+        <button id="btnViewRules" class="btn-info" style="margin-top:10px;">Ver Regras do Jogo</button>
       </div>
 
       <!-- HOST AREA -->
@@ -55,6 +81,10 @@
 
         <div id="hostGame" class="hidden section">
           <div id="hostStatusPanel" class="status-panel"></div>
+          
+          <div style="text-align:center; margin-bottom:10px;">
+            <button id="btnEndFingerPower" class="btn-warning" style="display:none;">Finalizar Poder do Dedo</button>
+          </div>
 
           <div style="text-align:center;margin-bottom:10px;" id="qrCodeGame"></div>
 
@@ -161,6 +191,9 @@
       </div>
     </div><!-- contentScroll -->
   </div><!-- mainContainer -->
+
+  <!-- Botão flutuante para regras -->
+  <button id="btnShowRules" class="btn-info">Regras</button>
 
   <!-- Link para o arquivo JavaScript externo -->
   <script src="script.js"></script>
