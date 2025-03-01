@@ -1,0 +1,262 @@
+/* Adicione estas novas classes ao seu arquivo styles.css */
+
+/* --------- MELHORIAS NA NARRATIVA --------- */
+/* Estilo para o painel de narrativa com ordem inversa */
+.central-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Estilo para destacar o log mais recente */
+.log-newest {
+  border-left: 4px solid var(--primary);
+  background-color: rgba(67, 97, 238, 0.08);
+  padding: var(--spacing) !important;
+  font-weight: 500;
+  margin-bottom: var(--spacing-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.player-mode .log-newest {
+  border-left: 4px solid var(--player-primary);
+  background-color: rgba(76, 201, 240, 0.08);
+}
+
+/* Ajustes para melhorar a visualização */
+.log-item {
+  padding: var(--spacing-sm) var(--spacing);
+  border-bottom: 1px solid var(--border-color);
+  animation: fadeIn 0.3s ease;
+}
+
+/* Remover o ajuste anterior para ordem invertida que causava confusão */
+.reverse-order {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Garantir que o primeiro item seja destacado também no modo jogador */
+.reverse-order .log-newest {
+  border-left: 4px solid var(--player-primary);
+  background-color: rgba(76, 201, 240, 0.08);
+}
+
+/* --------- OTIMIZAÇÃO DO LAYOUT --------- */
+/* 1. Reestruturação do grid para melhor aproveitamento do espaço */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 30% 30% 40%;
+  grid-template-rows: auto 1fr;
+  gap: var(--spacing);
+  height: calc(100% - 70px);
+}
+
+.current-player-cell {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.players-cell {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.rules-logs-cell {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.chat-cell {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+/* 2. Melhorias visuais nos painéis */
+.dashboard-cell {
+  background: white;
+  border-radius: var(--border-radius);
+  padding: var(--spacing);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  border: 1px solid rgba(67, 97, 238, 0.1);
+  transition: box-shadow var(--transition-fast);
+}
+
+.dashboard-cell:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* 3. Destacar seção ativa */
+.narrative-section {
+  flex: 1;
+}
+
+.narrative-section h3 {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing);
+  background: linear-gradient(to right, rgba(67, 97, 238, 0.1), transparent);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* 4. Melhorias no painel de narrativa */
+.central-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  border-radius: var(--border-radius);
+  background: var(--bg-light);
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-light) transparent;
+}
+
+.central-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.central-panel::-webkit-scrollbar-thumb {
+  background-color: var(--primary-light);
+  border-radius: var(--border-radius-full);
+}
+
+/* 5. Melhoria na visualização da carta atual */
+.center-card-section.compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(to bottom, rgba(67, 97, 238, 0.05), transparent);
+  border-radius: var(--border-radius);
+  padding: var(--spacing);
+  margin-top: var(--spacing);
+}
+
+.current-card {
+  margin: var(--spacing) 0;
+}
+
+/* 6. Destaque para jogador atual */
+.current-player-display {
+  background: linear-gradient(to right, rgba(67, 97, 238, 0.05), transparent);
+  border-radius: var(--border-radius);
+  padding: var(--spacing);
+  margin-bottom: var(--spacing);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+}
+
+/* 7. Melhorias para o responsivo */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 50% 50%;
+    grid-template-rows: auto auto;
+  }
+  
+  .current-player-cell {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  .players-cell {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  
+  .rules-logs-cell {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  
+  .chat-cell {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto auto auto;
+  }
+  
+  .current-player-cell, .players-cell, .rules-logs-cell, .chat-cell {
+    grid-column: 1;
+  }
+  
+  .current-player-cell {
+    grid-row: 1;
+  }
+  
+  .players-cell {
+    grid-row: 2;
+  }
+  
+  .rules-logs-cell {
+    grid-row: 3;
+  }
+  
+  .chat-cell {
+    grid-row: 4;
+  }
+}
+
+/* 8. Melhorias na visualização do baralho */
+.deck-view {
+  background: white;
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  box-shadow: var(--shadow-sm) inset;
+  min-height: 80px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 9. Melhorias na visualização das regras */
+.rules-box {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.rule-item {
+  background: linear-gradient(to right, rgba(67, 97, 238, 0.05), transparent);
+  margin: var(--spacing-xs) 0;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  border-left: 3px solid var(--primary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* 10. Estilo para o botão de novo baralho */
+#btnNewDeck {
+  margin-top: var(--spacing);
+  background: linear-gradient(to right, var(--warning), #ffd166);
+  box-shadow: 0 4px 10px rgba(249, 199, 79, 0.3);
+  transition: all var(--transition);
+}
+
+#btnNewDeck:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(249, 199, 79, 0.4);
+}
+
+/* Animação pulsante para chamar atenção quando o baralho estiver acabando */
+@keyframes btnPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+#btnNewDeck.pulse-animation {
+  animation: btnPulse 1.5s infinite;
+}
